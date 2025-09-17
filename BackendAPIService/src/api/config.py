@@ -20,7 +20,9 @@ class Settings(BaseModel):
     CORS_ORIGINS: List[str] = Field(
         default_factory=lambda: ["*"], description="Allowed CORS origins"
     )
-    JWT_SECRET_KEY: str = Field(..., description="Secret key for JWT signing")
+    # NOTE: In production, JWT_SECRET_KEY MUST be provided via environment.
+    # For container startup robustness in non-prod, we allow a development default.
+    JWT_SECRET_KEY: str = Field(default="CHANGE_ME_DEV_SECRET_NOT_FOR_PROD", description="Secret key for JWT signing")
     JWT_ALGORITHM: str = Field(default="HS256", description="JWT signing algorithm")
     ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default=60 * 24, description="Access token expiry in minutes")
 
