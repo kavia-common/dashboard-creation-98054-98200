@@ -60,9 +60,17 @@ Environment variable defaults for local/dev:
 - JWT_SECRET_KEY defaults to `insecure-dev-secret-change-me` if not set.
 Always set proper values in production via env/Compose.
 
+Troubleshooting container not starting:
+- Ensure port 3001 is free on the host or mapped correctly (e.g., -p 3001:3001).
+- Module import error: We include src/__init__.py so that 'src.api.main:app' is always importable.
+  If you see "Error loading ASGI app. Could not import module 'src.api.main'", verify the WORKDIR is /app and that src/ exists at /app/src.
+- Database connectivity: By default, the app uses SQLite and will create app.db in /app. If you provide a PostgreSQL DATABASE_URL but the DB is not reachable, startup may still succeed, but requests will fail. For initial smoke tests, omit DATABASE_URL to use SQLite.
+- Healthcheck failures: The image uses curl to check /. If you modify ports or routes, update the Dockerfile accordingly.
+
 ## OpenAPI
 
 Generate and write to `interfaces/openapi.json`:
 ```bash
-python -m src.api.generate_openapi
+python -m src.api.generate_openAPI
 ```
+Note: Alternatively, run the app and visit /openapi.json.
