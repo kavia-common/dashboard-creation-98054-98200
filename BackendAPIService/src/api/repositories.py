@@ -30,7 +30,8 @@ class UsersRepository:
         self._seed_admin()
 
     def _seed_admin(self) -> None:
-        email = _settings.DEMO_ADMIN_EMAIL
+        # Normalize email to lowercase for consistent indexing
+        email = _settings.DEMO_ADMIN_EMAIL.lower()
         if email in self._by_email:
             return
         password_hash = _settings.DEMO_ADMIN_PASSWORD_HASH or hash_password("Admin@12345")

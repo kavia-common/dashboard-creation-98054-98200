@@ -20,7 +20,8 @@ settings = get_settings()
 # PUBLIC_INTERFACE
 def list_reports(
     page: int = Query(1, ge=1, description="Page number"),
-    size: int = Query(default_factory=lambda: settings.DEFAULT_PAGE_SIZE, ge=1, le=100, description="Page size"),
+    # Use a static default from settings; default_factory is not supported by fastapi.Query
+    size: int = Query(settings.DEFAULT_PAGE_SIZE, ge=1, le=100, description="Page size"),
     search: Optional[str] = Query(None, description="Search query"),
     _=Depends(get_current_user),
 ):

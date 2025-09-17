@@ -15,8 +15,9 @@ app = FastAPI(
     title=settings.APP_NAME,
     description=settings.APP_DESC,
     version=settings.APP_VERSION,
-    openapi_tags=openapi_tags,
 )
+# Attach tags metadata for OpenAPI after app creation (FastAPI constructor does not accept openapi_tags)
+app.openapi_tags = openapi_tags
 
 app.add_middleware(
     CORSMiddleware,
