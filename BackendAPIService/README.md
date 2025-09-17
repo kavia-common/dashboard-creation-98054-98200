@@ -40,16 +40,25 @@ Troubleshooting:
 
 ## Docker
 
+Service listens on port 3001 inside the container.
+
 ```bash
 docker build -t backend-service .
-docker run --env-file .env -p 8000:8000 backend-service
+docker run --env-file .env -p 3001:3001 backend-service
 ```
 
-The Dockerfile already uses:
+The Dockerfile runs:
 ```
-CMD ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers"]
+CMD ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "3001", "--proxy-headers"]
 ```
-which ensures the correct import path inside the container.
+which ensures the correct import path and port inside the container.
+
+Healthcheck hits `http://localhost:3001/`.
+
+Environment variable defaults for local/dev:
+- DATABASE_URL defaults to `sqlite:///./app.db` if not set (a file in container working dir).
+- JWT_SECRET_KEY defaults to `insecure-dev-secret-change-me` if not set.
+Always set proper values in production via env/Compose.
 
 ## OpenAPI
 

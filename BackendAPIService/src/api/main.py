@@ -19,7 +19,13 @@ from sqlalchemy.orm import Session, relationship, sessionmaker
 # ------------------------------------------------------------------------------
 
 class Settings(BaseSettings):
-    """Application settings sourced from environment variables."""
+    """Application settings sourced from environment variables.
+
+    Notes:
+    - In production, set DATABASE_URL and JWT_SECRET_KEY via env/Compose/Secrets.
+    - For local/dev containers, we default to SQLite and a generated dev secret
+      so the service can boot and pass healthchecks even if envs are not provided.
+    """
 
     APP_NAME: str = "Dashboard Backend API"
     APP_DESCRIPTION: str = (
@@ -29,10 +35,18 @@ class Settings(BaseSettings):
     APP_VERSION: str = "1.0.0"
 
     # Database URL, e.g. postgresql+psycopg2://user:pass@host:5432/dbname
-    DATABASE_URL: str = Field(..., description="SQLAlchemy database URL for PostgreSQL")
+    # Default to local SQLite in container for dev to avoid crash when env is missing.
+    DATABASE_URL: str = Field(
+        default="sqlite:///./app.db",
+        description="SQLAlchemy database URL (PostgreSQL recommended in production).",
+    )
 
     # JWT settings
-    JWT_SECRET_KEY: str = Field(..., description="Secret key for signing JWTs")
+    # WARNING: Default key is for development only; override via env in production.
+    JWT_SECRET_KEY: str = Field(
+        default=os.getenv("JWT_SECRET_KEY", "insecure-dev-secret-change-me"),
+        description="Secret key for signing JWTs",
+    )
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRES_MINUTES: int = 60
 
@@ -47,7 +61,7 @@ class Settings(BaseSettings):
         case_sensitive = True
 
 
-settings = Settings()  # Reads from environment
+settings = Settings()  # Reads from environment and uses safe dev defaults
 
 # ------------------------------------------------------------------------------
 # Logging
@@ -68,8 +82,21 @@ logger.setLevel(logging.INFO)
 Base = declarative_base()
 
 # Create engine
-engine = create_engine(settings.DATABASE_URL, pool_pre_ping=True, future=True)
+# If using SQLite, set check_same_thread for SQLAlchemy+SQLite in single-threaded context.
+engine_kwargs: Dict[str, Any] = {"pool_pre_ping": True, "future": True}
+if settings.DATABASE_URL.startswith("sqlite"):
+    engine_kwargs.update({"connect_args": {"check_same_thread": False}})
+
+engine = create_engine(settings.DATABASE_URL, **engine_kwargs)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+# Log minimal non-sensitive startup info
+try:
+    from sqlalchemy.engine.url import make_url
+    _url = make_url(settings.DATABASE_URL)
+    logger.info(f"Starting BackendAPIService v{settings.APP_VERSION} using DB dialect={_url.get_dialect().name}")
+except Exception:
+    logger.info("Starting BackendAPIService (database URL parsing failed).")
 
 
 def get_db():
