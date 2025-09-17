@@ -5,7 +5,7 @@ FastAPI backend providing:
 - Protected CRUD endpoints for Users (`/users`) and Reports (`/reports`)
 - Chart data endpoint (`GET /charts/data`)
 - Dashboard overview endpoint (`GET /dashboard`)
-- PostgreSQL integration via SQLAlchemy
+- PostgreSQL (or SQLite dev) via SQLAlchemy ORM
 - bcrypt password hashing
 - OpenAPI docs at `/docs` and `/openapi.json`
 - Production Dockerfile using Uvicorn
@@ -13,12 +13,13 @@ FastAPI backend providing:
 ## Environment
 
 Copy `.env.example` to `.env` and update values:
-- DATABASE_URL (PostgreSQL URL or SQLite for local quick start)
-- JWT_SECRET_KEY
-- JWT_EXPIRES_MINUTES (optional)
+- DATABASE_URL (PostgreSQL URL recommended; SQLite is allowed for local quick start)
+- JWT_SECRET_KEY (REQUIRED in production)
+- JWT_EXPIRES_MINUTES (optional; default 60)
 - ADMIN_EMAIL / ADMIN_PASSWORD for seeding first admin on startup (optional)
+- CORS_* values as needed
 
-Note: The app reads environment variables via pydantic BaseSettings. If required variables are missing (e.g. DATABASE_URL, JWT_SECRET_KEY), startup will fail.
+Note: The app reads environment variables via Pydantic BaseSettings. Safe defaults are applied for dev usage so the app can start even if some envs are missing.
 
 ## Run locally
 
@@ -28,7 +29,7 @@ Always target the correct module path `src.api.main:app`:
 pip install -r requirements.txt
 
 # Option A: direct uvicorn with explicit module path
-uvicorn src.api.main:app --reload
+uvicorn src.api.main:app --reload --host 0.0.0.0 --port 3001
 
 # Option B: use the helper runner (ensures proper sys.path)
 python -m src.run
@@ -56,9 +57,25 @@ which ensures the correct import path and port inside the container.
 Healthcheck hits `http://localhost:3001/`.
 
 Environment variable defaults for local/dev:
-- DATABASE_URL defaults to `sqlite:///./app.db` if not set (a file in container working dir).
-- JWT_SECRET_KEY defaults to `insecure-dev-secret-change-me` if not set.
-Always set proper values in production via env/Compose.
+- DATABASE_URL defaults to `sqlite:///./app.db` (file in container working dir).
+- JWT_SECRET_KEY defaults to `insecure-dev-secret-change-me`.
+Always set proper values in production via env/Compose/Secrets.
+
+## API Overview
+
+- POST `/login` — returns JWT token. Body: `{ "email": "...", "password": "..." }`
+- GET `/users` — list users (auth required)
+- POST `/users` — create user (auth required; only admin can set role)
+- PUT `/users/{user_id}` — update user (auth required; admin for role changes)
+- DELETE `/users/{user_id}` — delete user (auth required; admin or self)
+- GET `/reports` — list reports (auth required)
+- POST `/reports` — create report (auth required)
+- PUT `/reports/{report_id}` — update report (auth required; owner or admin)
+- DELETE `/reports/{report_id}` — delete report (auth required; owner or admin)
+- GET `/charts/data` — chart datasets (auth required)
+- GET `/dashboard` — dashboard aggregates (auth required)
+
+All protected endpoints require `Authorization: Bearer <token>` header.
 
 ## OpenAPI
 

@@ -10,7 +10,7 @@ Example:
 
 # PUBLIC_INTERFACE
 def get_version() -> str:
-    """Return the API package version."""
+    """This is a public function that returns the API package version string."""
     return "1.0.0"
 
 # Import at module level to expose `app` as src.api.app

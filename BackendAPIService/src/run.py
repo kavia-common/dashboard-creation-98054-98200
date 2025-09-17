@@ -23,10 +23,9 @@ def _ensure_project_root_on_path() -> None:
     if project_root not in sys.path:
         sys.path.insert(0, project_root)
 
+# PUBLIC_INTERFACE
 def main() -> None:
-    """
-    Start the ASGI server targeting src.api.main:app with sensible defaults.
-    """
+    """Launch the Uvicorn server targeting src.api.main:app."""
     _ensure_project_root_on_path()
     import uvicorn  # lazy import after path adjustment
 

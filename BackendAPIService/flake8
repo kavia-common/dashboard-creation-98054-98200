@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# Repository-local flake8 shim to satisfy CI environments where flake8 is not preinstalled.
+set -euo pipefail
+
+# Try running system flake8 if available
+if command -v flake8 >/dev/null 2>&1; then
+  exec "$(command -v flake8)" "$@"
+fi
+
+# Attempt to use venv/bin/flake8 if present
+if [ -x "venv/bin/flake8" ]; then
+  exec venv/bin/flake8 "$@"
+fi
+
+# Last resort: install flake8 into a local user site and re-exec
+if command -v python3 >/dev/null 2>&1; then
+  python3 -m pip install --user flake8 >/dev/null 2>&1 || true
+elif command -v python >/dev/null 2>&1; then
+  python -m pip install --user flake8 >/dev/null 2>&1 || true
+fi
+
+if command -v flake8 >/dev/null 2>&1; then
+  exec "$(command -v flake8)" "$@"
+fi
+
+echo "flake8 not found and could not be installed automatically." >&2
+exit 127

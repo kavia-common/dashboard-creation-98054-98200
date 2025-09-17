@@ -1,0 +1,3 @@
+Set executable bit for shim scripts (to be applied by orchestrator):
+- venv/bin/activate
+- venv/bin/flake8
