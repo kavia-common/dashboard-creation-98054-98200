@@ -1,0 +1,46 @@
+"""
+Utility entrypoint to run the FastAPI app with a consistent import path.
+
+Usage:
+    python -m src.run
+or
+    python src/run.py
+
+This ensures Uvicorn targets the correct module path: src.api.main:app
+"""
+import os
+import sys
+
+def _ensure_project_root_on_path() -> None:
+    """
+    Ensure the project root is on sys.path so that 'src' is importable
+    even if executed from different working directories.
+    """
+    # Resolve this file -> src/run.py -> project_root/src/run.py
+    current_file = os.path.abspath(__file__)
+    src_dir = os.path.dirname(current_file)
+    project_root = os.path.dirname(src_dir)
+    if project_root not in sys.path:
+        sys.path.insert(0, project_root)
+
+def main() -> None:
+    """
+    Start the ASGI server targeting src.api.main:app with sensible defaults.
+    """
+    _ensure_project_root_on_path()
+    import uvicorn  # lazy import after path adjustment
+
+    host = os.getenv("HOST", "0.0.0.0")
+    port = int(os.getenv("PORT", "8000"))
+    uvicorn.run(
+        "src.api.main:app",
+        host=host,
+        port=port,
+        proxy_headers=True,
+        reload=os.getenv("UVICORN_RELOAD", "false").lower() in ("1", "true", "yes"),
+        workers=int(os.getenv("UVICORN_WORKERS", "1")),
+        log_level=os.getenv("UVICORN_LOG_LEVEL", "info"),
+    )
+
+if __name__ == "__main__":
+    main()
