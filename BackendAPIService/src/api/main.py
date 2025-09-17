@@ -15,10 +15,7 @@ from fastapi import (
     status,
 )
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.security import (
-    HTTPAuthorizationCredentials,
-    HTTPBearer,
-)
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, BaseSettings, EmailStr, Field
 from sqlalchemy import (
     Column,
@@ -30,9 +27,7 @@ from sqlalchemy import (
     create_engine,
     func,
 )
-from sqlalchemy.exc import (
-    IntegrityError,
-)
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Session, relationship, sessionmaker
 
@@ -53,30 +48,35 @@ class Settings(BaseSettings):
     APP_NAME: str = "Dashboard Backend API"
     APP_DESCRIPTION: str = (
         "FastAPI backend providing JWT authentication, CRUD operations for users and reports, "
-        "and chart/dashboard endpoints. Uses SQLAlchemy with PostgreSQL, bcrypt for password hashing."
+        "and chart/dashboard endpoints. Uses SQLAlchemy with PostgreSQL, "
+        "bcrypt for password hashing."
     )
     APP_VERSION: str = "1.0.0"
 
-    # Database URL, e.g. postgresql+psycopg2://user:pass@host:5432/dbname
-    # Default to local SQLite in container for dev to avoid crash when env is missing.
+    # Database URL; allow override via environment
     DATABASE_URL: str = Field(
-        default="sqlite:///./app.db",
+        default=os.getenv("DATABASE_URL", "sqlite:///./app.db"),
         description="SQLAlchemy database URL (PostgreSQL recommended in production).",
     )
 
-    # JWT settings
-    # WARNING: Default key is for development only; override via env in production.
+    # JWT settings; allow override via environment
     JWT_SECRET_KEY: str = Field(
         default=os.getenv("JWT_SECRET_KEY", "insecure-dev-secret-change-me"),
         description="Secret key for signing JWTs",
     )
     JWT_ALGORITHM: str = "HS256"
-    JWT_EXPIRES_MINUTES: int = 60
+    JWT_EXPIRES_MINUTES: int = int(os.getenv("JWT_EXPIRES_MINUTES", "60"))
 
-    # CORS
-    CORS_ALLOW_ORIGINS: List[str] = ["*"]
-    CORS_ALLOW_METHODS: List[str] = ["*"]
-    CORS_ALLOW_HEADERS: List[str] = ["*"]
+    # CORS: comma-separated envs fallback to wildcard
+    CORS_ALLOW_ORIGINS: List[str] = Field(
+        default_factory=lambda: [o for o in os.getenv("CORS_ALLOW_ORIGINS", "*").split(",") if o]
+    )
+    CORS_ALLOW_METHODS: List[str] = Field(
+        default_factory=lambda: [m for m in os.getenv("CORS_ALLOW_METHODS", "*").split(",") if m]
+    )
+    CORS_ALLOW_HEADERS: List[str] = Field(
+        default_factory=lambda: [h for h in os.getenv("CORS_ALLOW_HEADERS", "*").split(",") if h]
+    )
     CORS_ALLOW_CREDENTIALS: bool = True
 
     class Config:
@@ -116,6 +116,7 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 # Log minimal non-sensitive startup info
 try:
     from sqlalchemy.engine.url import make_url
+
     _url = make_url(settings.DATABASE_URL)
     logger.info(
         "Starting BackendAPIService v%s using DB dialect=%s",

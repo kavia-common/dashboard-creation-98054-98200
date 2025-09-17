@@ -14,6 +14,7 @@ FastAPI backend providing:
 
 Copy `.env.example` to `.env` and update values:
 - DATABASE_URL (PostgreSQL URL recommended; SQLite is allowed for local quick start)
+  Example: postgresql+psycopg2://user:password@dbhost:5432/dashboard_app_db
 - JWT_SECRET_KEY (REQUIRED in production)
 - JWT_EXPIRES_MINUTES (optional; default 60)
 - ADMIN_EMAIL / ADMIN_PASSWORD for seeding first admin on startup (optional)

@@ -20,6 +20,11 @@ If your environment lacks flake8, install dependencies with:
 pip install -r requirements.txt
 ```
 
+In CI or minimal environments where `venv` or `flake8` isn't available, use the repo-local shim:
+```bash
+./flake8
+```
+
 ## Running
 ```bash
 uvicorn src.api.main:app --host 0.0.0.0 --port 3001 --proxy-headers

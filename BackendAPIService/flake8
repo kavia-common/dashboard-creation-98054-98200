@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Repository-local flake8 shim to satisfy CI environments where flake8 is not preinstalled.
+# Repository-local flake8 shim to satisfy CI environments where flake8/venv are not preinstalled.
 set -euo pipefail
 
 # Try running system flake8 if available

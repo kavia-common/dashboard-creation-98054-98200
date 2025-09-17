@@ -44,5 +44,6 @@ def main() -> None:
         log_level=os.getenv("UVICORN_LOG_LEVEL", "info"),
     )
 
+
 if __name__ == "__main__":
     main()
