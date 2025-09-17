@@ -4,10 +4,12 @@ Generate and write the OpenAPI schema to interfaces/openapi.json.
 Usage:
     python -m src.api.generate_openapi
 """
+
 import json
 import os
 
 from src.api.main import app
+
 
 def main() -> None:
     openapi_schema = app.openapi()
@@ -17,6 +19,7 @@ def main() -> None:
     with open(output_path, "w") as f:
         json.dump(openapi_schema, f, indent=2)
     print(f"OpenAPI schema written to {output_path}")
+
 
 if __name__ == "__main__":
     main()

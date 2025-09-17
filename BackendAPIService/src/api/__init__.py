@@ -8,10 +8,12 @@ Example:
     uvicorn src.api:app --reload
 """
 
+
 # PUBLIC_INTERFACE
 def get_version() -> str:
     """This is a public function that returns the API package version string."""
     return "1.0.0"
+
 
 # Import at module level to expose `app` as src.api.app
 from .main import app  # noqa: E402,F401  (import after definition on purpose)

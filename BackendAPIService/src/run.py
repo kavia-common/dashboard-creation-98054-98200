@@ -11,6 +11,7 @@ This ensures Uvicorn targets the correct module path: src.api.main:app
 import os
 import sys
 
+
 def _ensure_project_root_on_path() -> None:
     """
     Ensure the project root is on sys.path so that 'src' is importable
@@ -24,6 +25,8 @@ def _ensure_project_root_on_path() -> None:
         sys.path.insert(0, project_root)
 
 # PUBLIC_INTERFACE
+
+
 def main() -> None:
     """Launch the Uvicorn server targeting src.api.main:app."""
     _ensure_project_root_on_path()

@@ -5,18 +5,41 @@ from typing import Any, Dict, List, Optional
 
 import bcrypt
 import jwt
-from fastapi import Depends, FastAPI, HTTPException, Request, Response, Security, status
+from fastapi import (
+    Depends,
+    FastAPI,
+    HTTPException,
+    Request,
+    Response,
+    Security,
+    status,
+)
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from fastapi.security import (
+    HTTPAuthorizationCredentials,
+    HTTPBearer,
+)
 from pydantic import BaseModel, BaseSettings, EmailStr, Field
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text, create_engine, func
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy import (
+    Column,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    create_engine,
+    func,
+)
+from sqlalchemy.exc import (
+    IntegrityError,
+)
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Session, relationship, sessionmaker
 
 # ------------------------------------------------------------------------------
 # Configuration and Settings
 # ------------------------------------------------------------------------------
+
 
 class Settings(BaseSettings):
     """Application settings sourced from environment variables.
@@ -94,7 +117,11 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 try:
     from sqlalchemy.engine.url import make_url
     _url = make_url(settings.DATABASE_URL)
-    logger.info(f"Starting BackendAPIService v{settings.APP_VERSION} using DB dialect={_url.get_dialect().name}")
+    logger.info(
+        "Starting BackendAPIService v%s using DB dialect=%s",
+        settings.APP_VERSION,
+        _url.get_dialect().name,
+    )
 except Exception:
     logger.info("Starting BackendAPIService (database URL parsing failed).")
 
@@ -536,7 +563,11 @@ def create_report(
     current_user: User = Depends(get_current_user),
 ):
     """Create a new report. Default owner is current user unless admin sets owner_id."""
-    owner_id = payload.owner_id if (payload.owner_id and current_user.role == "admin") else current_user.id
+    owner_id = (
+        payload.owner_id
+        if (payload.owner_id and current_user.role == "admin")
+        else current_user.id
+    )
     new_item = Report(title=payload.title, description=payload.description, owner_id=owner_id)
     db.add(new_item)
     db.commit()
@@ -611,7 +642,10 @@ class ChartDataResponse(BaseModel):
     response_model=ChartDataResponse,
     tags=["charts"],
     summary="Get chart data",
-    description="Returns sample data for Line, Bar, and Pie charts suitable for Chart.js or Recharts.",
+    description=(
+        "Returns sample data for Line, Bar, and Pie charts suitable for "
+        "Chart.js or Recharts."
+    ),
 )
 def get_chart_data(current_user: User = Depends(get_current_user)) -> ChartDataResponse:
     """
@@ -659,7 +693,11 @@ def get_dashboard(db: Session = Depends(get_db), current_user: User = Depends(ge
     users_count = db.query(User).count()
     reports_count = db.query(Report).count()
     recent = db.query(Report).order_by(Report.created_at.desc()).limit(5).all()
-    return DashboardResponse(users_count=users_count, reports_count=reports_count, recent_reports=recent)
+    return DashboardResponse(
+        users_count=users_count,
+        reports_count=reports_count,
+        recent_reports=recent,
+    )
 
 
 # ------------------------------------------------------------------------------
