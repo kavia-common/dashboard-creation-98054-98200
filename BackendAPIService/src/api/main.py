@@ -22,6 +22,7 @@ from fastapi.security import (
 from pydantic import BaseModel, EmailStr, Field
 from pydantic_settings import BaseSettings
 from pydantic import field_validator, ValidationError
+from pydantic import ConfigDict
 from sqlalchemy import (
     Column,
     DateTime,
@@ -51,6 +52,9 @@ class Settings(BaseSettings):
     - For local/dev containers, we default to SQLite and a generated dev secret
       so the service can boot and pass healthchecks even if envs are not provided.
     """
+
+    # Allow ignoring any extra env vars to avoid hard failures if orchestrator injects more
+    model_config = ConfigDict(extra="ignore")
 
     APP_NAME: str = "Dashboard Backend API"
     APP_DESCRIPTION: str = (
@@ -82,6 +86,26 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRES_MINUTES: int = 60
 
+    # Optional admin bootstrap credentials (used on startup if no users exist)
+    ADMIN_EMAIL: Optional[str] = Field(
+        default=None,
+        description="Optional initial admin email used for seeding on first startup.",
+    )
+    ADMIN_PASSWORD: Optional[str] = Field(
+        default=None,
+        description="Optional initial admin password used for seeding on first startup.",
+    )
+
+    # Host/Port bindings (used by src/run.py or external processes)
+    HOST: Optional[str] = Field(
+        default="0.0.0.0",
+        description="ASGI bind host. Default 0.0.0.0",
+    )
+    PORT: Optional[int] = Field(
+        default=3001,
+        description="ASGI bind port. Default 3001",
+    )
+
     # CORS - robust parsing
     # Accepts:
     # - empty/missing: defaults to ["*"] (dev)
@@ -90,15 +114,24 @@ class Settings(BaseSettings):
     # - JSON list string (e.g., '["http://a.com", "http://b.com"]')
     CORS_ALLOW_ORIGINS: List[str] | str = Field(
         default="*",
-        description="Allowed CORS origins. Comma-separated or JSON list. Default '*' for dev.",
+        description=(
+            "Allowed CORS origins. Comma-separated or JSON list. "
+            "Default '*' for dev."
+        ),
     )
     CORS_ALLOW_METHODS: List[str] | str = Field(
         default="*",
-        description="Allowed CORS methods. Comma-separated or JSON list. Default '*'.",
+        description=(
+            "Allowed CORS methods. Comma-separated or JSON list. "
+            "Default '*'."
+        ),
     )
     CORS_ALLOW_HEADERS: List[str] | str = Field(
         default="*",
-        description="Allowed CORS headers. Comma-separated or JSON list. Default '*'.",
+        description=(
+            "Allowed CORS headers. Comma-separated or JSON list. "
+            "Default '*'."
+        ),
     )
     CORS_ALLOW_CREDENTIALS: bool = True
 
@@ -402,6 +435,7 @@ def _to_list(v):
         return [p.strip() for p in v.split(",") if p.strip()]
     return ["*"]
 
+
 # CORS
 app.add_middleware(
     CORSMiddleware,
@@ -421,17 +455,17 @@ def on_startup():
     """
     Initialize database tables and create a default admin if no users exist.
 
-    Uses environment variables:
-    - ADMIN_EMAIL (optional, default admin@example.com)
-    - ADMIN_PASSWORD (optional, default 'admin123!')
+    Uses settings/environment variables:
+    - ADMIN_EMAIL (optional, defaults to admin@example.com if not provided)
+    - ADMIN_PASSWORD (optional, defaults to 'admin123!' if not provided)
     """
     Base.metadata.create_all(bind=engine)
     db = SessionLocal()
     try:
         any_user = db.query(User).first()
         if not any_user:
-            admin_email = os.getenv("ADMIN_EMAIL", "admin@example.com")
-            admin_password = os.getenv("ADMIN_PASSWORD", "admin123!")
+            admin_email = settings.ADMIN_EMAIL or os.getenv("ADMIN_EMAIL", "admin@example.com")
+            admin_password = settings.ADMIN_PASSWORD or os.getenv("ADMIN_PASSWORD", "admin123!")
             admin = User(
                 email=admin_email,
                 full_name="Administrator",
