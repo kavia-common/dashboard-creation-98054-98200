@@ -19,7 +19,8 @@ from fastapi.security import (
     HTTPAuthorizationCredentials,
     HTTPBearer,
 )
-from pydantic import BaseModel, BaseSettings, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field
+from pydantic_settings import BaseSettings
 from sqlalchemy import (
     Column,
     DateTime,
