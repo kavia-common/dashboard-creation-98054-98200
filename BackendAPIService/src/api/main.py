@@ -53,7 +53,8 @@ class Settings(BaseSettings):
     APP_NAME: str = "Dashboard Backend API"
     APP_DESCRIPTION: str = (
         "FastAPI backend providing JWT authentication, CRUD operations for users and reports, "
-        "and chart/dashboard endpoints. Uses SQLAlchemy with PostgreSQL, bcrypt for password hashing."
+        "and chart/dashboard endpoints. Uses SQLAlchemy with PostgreSQL, "
+        "bcrypt for password hashing."
     )
     APP_VERSION: str = "1.0.0"
 

@@ -28,12 +28,19 @@ def _ensure_project_root_on_path() -> None:
 
 
 def main() -> None:
-    """Launch the Uvicorn server targeting src.api.main:app."""
+    """Launch the Uvicorn server targeting src.api.main:app.
+
+    Binds to HOST:PORT where:
+    - HOST defaults to 0.0.0.0
+    - PORT defaults to 3001 (to align with container/orchestrator expectations)
+    Override via environment variables HOST and PORT as needed.
+    """
     _ensure_project_root_on_path()
     import uvicorn  # lazy import after path adjustment
 
     host = os.getenv("HOST", "0.0.0.0")
-    port = int(os.getenv("PORT", "8000"))
+    # Default to 3001 to match Dockerfile, compose and orchestrator health checks
+    port = int(os.getenv("PORT", "3001"))
     uvicorn.run(
         "src.api.main:app",
         host=host,
@@ -43,6 +50,7 @@ def main() -> None:
         workers=int(os.getenv("UVICORN_WORKERS", "1")),
         log_level=os.getenv("UVICORN_LOG_LEVEL", "info"),
     )
+
 
 if __name__ == "__main__":
     main()
