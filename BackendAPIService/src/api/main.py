@@ -873,7 +873,10 @@ class DashboardResponse(BaseModel):
     tags=["dashboard"],
     summary="Get dashboard overview",
 )
-def get_dashboard(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def get_dashboard(
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
     """
     Return aggregated dashboard data. Protected by JWT.
 
