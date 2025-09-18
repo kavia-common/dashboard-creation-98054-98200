@@ -78,6 +78,31 @@ Environment variable defaults for local/dev:
 - JWT_SECRET_KEY defaults to `insecure-dev-secret-change-me`.
 Always set proper values in production via env/Compose/Secrets.
 
+### Database readiness and port 3001 not ready
+
+If the backend is not reported as ready on port 3001, verify:
+
+1) Correct DATABASE_URL:
+- For PostgreSQL (RelationalDatabase), use:
+  `postgresql+psycopg2://<user>:<password>@<host>:<port>/<db>`
+  In Docker Compose, <host> is usually the service name (e.g., `relationaldatabase`).
+
+2) Database availability at startup:
+- The service implements a retry/backoff on startup to wait for the DB to accept connections.
+- You can tune with env:
+  - DB_CONNECT_MAX_ATTEMPTS (default 20)
+  - DB_CONNECT_BASE_DELAY (default 0.5s)
+  - DB_CONNECT_MAX_DELAY (default 5.0s)
+
+3) Logs:
+- Startup logs include the database dialect and connectivity attempts.
+- Look for "Database connectivity verified" or "Database not ready ... Retrying".
+
+4) Health endpoint:
+- `/` returns a simple JSON health. The API will still come up even if DB is temporarily unavailable; DB-dependent endpoints will return errors until the DB is reachable.
+
+See `.env.example` for full configuration.
+
 ## API Overview
 
 - POST `/login` — returns JWT token. Body: `{ "email": "...", "password": "..." }`

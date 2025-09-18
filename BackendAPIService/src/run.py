@@ -41,6 +41,7 @@ def main() -> None:
     host = os.getenv("HOST", "0.0.0.0")
     # Default to 3001 to match Dockerfile, compose and orchestrator health checks
     port = int(os.getenv("PORT", "3001"))
+    print(f"Starting Uvicorn for BackendAPIService on {host}:{port} ...")
     uvicorn.run(
         "src.api.main:app",
         host=host,

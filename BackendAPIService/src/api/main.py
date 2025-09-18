@@ -470,8 +470,63 @@ def on_startup():
     Uses settings/environment variables:
     - ADMIN_EMAIL (optional, defaults to admin@example.com if not provided)
     - ADMIN_PASSWORD (optional, defaults to 'admin123!' if not provided)
+
+    Also implements a database readiness check with retries in case the database
+    container is not ready when this service starts.
     """
-    Base.metadata.create_all(bind=engine)
+    # Database readiness check with backoff
+    max_attempts = int(os.getenv("DB_CONNECT_MAX_ATTEMPTS", "20"))
+    base_delay = float(os.getenv("DB_CONNECT_BASE_DELAY", "0.5"))  # seconds
+    max_delay = float(os.getenv("DB_CONNECT_MAX_DELAY", "5.0"))    # seconds
+
+    attempt = 0
+    last_error: Optional[Exception] = None
+    while attempt < max_attempts:
+        try:
+            with engine.connect() as conn:
+                conn.execute(func.now().select())  # lightweight call to ensure ready
+            logger.info(
+                "Database connectivity verified on attempt %s/%s.",
+                attempt + 1,
+                max_attempts,
+            )
+            last_error = None
+            break
+        except Exception as e:
+            last_error = e
+            delay = min(max_delay, base_delay * (2 ** attempt))
+            logger.warning(
+                "DB not ready %s/%s; retry in %.2fs; err=%s",
+                attempt + 1,
+                max_attempts,
+                delay,
+                type(e).__name__,
+            )
+            import time
+            time.sleep(delay)
+            attempt += 1
+
+    if last_error is not None:
+        # Log error and continue to allow the app to start and expose health endpoint.
+        # Subsequent DB operations will still fail until DB becomes reachable, but
+        # uvicorn will be up and the container will be responsive for health checks.
+        logger.error(
+            "Database connectivity could not be established after %s attempts. "
+            "Proceeding to start API. Error: %s",
+            max_attempts,
+            repr(last_error),
+        )
+
+    # Proceed to create tables (safe to call even if DB is temporarily down; will raise which we catch)
+    try:
+        Base.metadata.create_all(bind=engine)
+    except Exception as e:
+        logger.error(
+            "Failed to create database tables on startup: %s",
+            repr(e),
+        )
+
+    # Seed admin if none exists
     db = SessionLocal()
     try:
         any_user = db.query(User).first()
