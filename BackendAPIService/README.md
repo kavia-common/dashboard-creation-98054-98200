@@ -21,6 +21,17 @@ Copy `.env.example` to `.env` and update values:
 
 Note: The app reads environment variables via Pydantic BaseSettings. Safe defaults are applied for dev usage so the app can start even if some envs are missing.
 
+CORS configuration
+- CORS_ALLOW_ORIGINS supports:
+  - Single origin string: http://localhost:3000
+  - Comma-separated string: http://localhost:3000,http://127.0.0.1:3000
+  - JSON list string: ["http://localhost:3000","http://127.0.0.1:3000"]
+  - Unset or empty defaults to ["*"] in development
+- CORS_ALLOW_METHODS and CORS_ALLOW_HEADERS accept "*", comma-separated strings, or JSON list strings.
+- CORS_ALLOW_CREDENTIALS is a boolean ("true"/"false").
+
+If parsing fails, the app raises a clear validation error indicating which CORS_ variable has an invalid format. Use .env.example as a reference.
+
 ## Run locally
 
 Always target the correct module path `src.api.main:app`:
@@ -38,6 +49,12 @@ python -m src.run
 Troubleshooting:
 - Error: `ERROR: Error loading ASGI app. Could not import module "main".`
   This means the command attempted to load `main:app`. Use the full path `src.api.main:app` or `python -m src.run`.
+- Error: SettingsError / ValidationError for CORS_ALLOW_ORIGINS, CORS_ALLOW_METHODS, or CORS_ALLOW_HEADERS:
+  Ensure the environment variable value is one of:
+  - Single origin: http://localhost:3000
+  - Comma-separated: http://localhost:3000,http://127.0.0.1:3000
+  - JSON list string: ["http://localhost:3000","http://127.0.0.1:3000]
+  For development, you may leave it unset or empty to default to ["*"]. See .env.example.
 
 ## Docker
 

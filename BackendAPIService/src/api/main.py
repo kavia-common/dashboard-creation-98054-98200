@@ -21,6 +21,7 @@ from fastapi.security import (
 )
 from pydantic import BaseModel, EmailStr, Field
 from pydantic_settings import BaseSettings
+from pydantic import field_validator, ValidationError
 from sqlalchemy import (
     Column,
     DateTime,
@@ -63,23 +64,95 @@ class Settings(BaseSettings):
     # Default to local SQLite in container for dev to avoid crash when env is missing.
     DATABASE_URL: str = Field(
         default="sqlite:///./app.db",
-        description="SQLAlchemy database URL (PostgreSQL recommended in production).",
+        description=(
+            "SQLAlchemy database URL "
+            "(PostgreSQL recommended in production)."
+        ),
     )
 
     # JWT settings
     # WARNING: Default key is for development only; override via env in production.
     JWT_SECRET_KEY: str = Field(
-        default=os.getenv("JWT_SECRET_KEY", "insecure-dev-secret-change-me"),
+        default=os.getenv(
+            "JWT_SECRET_KEY",
+            "insecure-dev-secret-change-me",
+        ),
         description="Secret key for signing JWTs",
     )
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRES_MINUTES: int = 60
 
-    # CORS
-    CORS_ALLOW_ORIGINS: List[str] = ["*"]
-    CORS_ALLOW_METHODS: List[str] = ["*"]
-    CORS_ALLOW_HEADERS: List[str] = ["*"]
+    # CORS - robust parsing
+    # Accepts:
+    # - empty/missing: defaults to ["*"] (dev)
+    # - single string (e.g., "http://localhost:3000")
+    # - comma-separated string (e.g., "http://a.com,http://b.com")
+    # - JSON list string (e.g., '["http://a.com", "http://b.com"]')
+    CORS_ALLOW_ORIGINS: List[str] | str = Field(
+        default="*",
+        description="Allowed CORS origins. Comma-separated or JSON list. Default '*' for dev.",
+    )
+    CORS_ALLOW_METHODS: List[str] | str = Field(
+        default="*",
+        description="Allowed CORS methods. Comma-separated or JSON list. Default '*'.",
+    )
+    CORS_ALLOW_HEADERS: List[str] | str = Field(
+        default="*",
+        description="Allowed CORS headers. Comma-separated or JSON list. Default '*'.",
+    )
     CORS_ALLOW_CREDENTIALS: bool = True
+
+    @staticmethod
+    def _parse_list_like(value, field_name: str) -> List[str]:
+        """
+        Convert environment-provided values to a list of strings.
+        Supports: list[str], single str, comma-separated str, JSON list str.
+        Returns ['*'] for empty/None to keep dev-friendly defaults.
+        Raises ValidationError with clear message if parsing fails.
+        """
+        if value is None:
+            return ["*"]
+        if isinstance(value, list):
+            # Ensure all are str
+            return [str(v).strip() for v in value if str(v).strip() != ""]
+        if isinstance(value, str):
+            s = value.strip()
+            if s == "":
+                return ["*"]
+            # Try JSON list if looks like it
+            if (s.startswith("[") and s.endswith("]")) or (s.startswith("(") and s.endswith(")")):
+                try:
+                    import json as _json
+
+                    parsed = _json.loads(s)
+                    if not isinstance(parsed, list):
+                        raise ValueError("JSON must represent a list")
+                    return [str(v).strip() for v in parsed if str(v).strip() != ""]
+                except Exception as e:
+                    raise ValidationError(
+                        [f"Invalid {field_name} format; JSON list could not be parsed: {e}"],
+                        Settings,
+                    )
+            # Else treat as comma-separated or single token
+            parts = [p.strip() for p in s.split(",")]
+            parts = [p for p in parts if p != ""]
+            return parts if parts else ["*"]
+        # Fallback unexpected type
+        raise ValidationError([f"{field_name} must be a string, list, or JSON list string"], Settings)
+
+    @field_validator("CORS_ALLOW_ORIGINS", mode="before")
+    def _coerce_cors_origins(cls, v):
+        return cls._parse_list_like(v, "CORS_ALLOW_ORIGINS")
+
+    @field_validator("CORS_ALLOW_METHODS", mode="before")
+    def _coerce_cors_methods(cls, v):
+        res = cls._parse_list_like(v, "CORS_ALLOW_METHODS")
+        return res if res else ["*"]
+
+    @field_validator("CORS_ALLOW_HEADERS", mode="before")
+    def _coerce_cors_headers(cls, v):
+        res = cls._parse_list_like(v, "CORS_ALLOW_HEADERS")
+        return res if res else ["*"]
 
     class Config:
         env_file = ".env"
@@ -319,13 +392,23 @@ app = FastAPI(
     openapi_tags=openapi_tags,
 )
 
+# Normalize CORS settings just in case a runtime override injected string values
+
+
+def _to_list(v):
+    if isinstance(v, list):
+        return v
+    if isinstance(v, str):
+        return [p.strip() for p in v.split(",") if p.strip()]
+    return ["*"]
+
 # CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ALLOW_ORIGINS,
+    allow_origins=_to_list(settings.CORS_ALLOW_ORIGINS),
     allow_credentials=settings.CORS_ALLOW_CREDENTIALS,
-    allow_methods=settings.CORS_ALLOW_METHODS,
-    allow_headers=settings.CORS_ALLOW_HEADERS,
+    allow_methods=_to_list(settings.CORS_ALLOW_METHODS),
+    allow_headers=_to_list(settings.CORS_ALLOW_HEADERS),
 )
 
 
