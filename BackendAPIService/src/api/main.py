@@ -20,9 +20,8 @@ from fastapi.security import (
     HTTPBearer,
 )
 from pydantic import BaseModel, EmailStr, Field
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import field_validator, ValidationError
-from pydantic import ConfigDict
 from sqlalchemy import (
     Column,
     DateTime,
@@ -53,8 +52,12 @@ class Settings(BaseSettings):
       so the service can boot and pass healthchecks even if envs are not provided.
     """
 
-    # Allow ignoring any extra env vars to avoid hard failures if orchestrator injects more
-    model_config = ConfigDict(extra="ignore")
+    # Pydantic v2 settings: ignore extra env vars, load from .env, and use case-sensitive env keys
+    model_config = SettingsConfigDict(
+        extra="ignore",
+        env_file=".env",
+        case_sensitive=True,
+    )
 
     APP_NAME: str = "Dashboard Backend API"
     APP_DESCRIPTION: str = (
@@ -139,6 +142,7 @@ class Settings(BaseSettings):
     def _parse_list_like(value, field_name: str) -> List[str]:
         """
         Convert environment-provided values to a list of strings.
+
         Supports: list[str], single str, comma-separated str, JSON list str.
         Returns ['*'] for empty/None to keep dev-friendly defaults.
         Raises ValidationError with clear message if parsing fails.
@@ -153,7 +157,9 @@ class Settings(BaseSettings):
             if s == "":
                 return ["*"]
             # Try JSON list if looks like it
-            if (s.startswith("[") and s.endswith("]")) or (s.startswith("(") and s.endswith(")")):
+            if (s.startswith("[") and s.endswith("]")) or (
+                s.startswith("(") and s.endswith(")")
+            ):
                 try:
                     import json as _json
 
@@ -163,7 +169,12 @@ class Settings(BaseSettings):
                     return [str(v).strip() for v in parsed if str(v).strip() != ""]
                 except Exception as e:
                     raise ValidationError(
-                        [f"Invalid {field_name} format; JSON list could not be parsed: {e}"],
+                        [
+                            (
+                                f"Invalid {field_name} format; "
+                                f"JSON list could not be parsed: {e}"
+                            )
+                        ],
                         Settings,
                     )
             # Else treat as comma-separated or single token
@@ -171,7 +182,9 @@ class Settings(BaseSettings):
             parts = [p for p in parts if p != ""]
             return parts if parts else ["*"]
         # Fallback unexpected type
-        raise ValidationError([f"{field_name} must be a string, list, or JSON list string"], Settings)
+        raise ValidationError(
+            [f"{field_name} must be a string, list, or JSON list string"], Settings
+        )
 
     @field_validator("CORS_ALLOW_ORIGINS", mode="before")
     def _coerce_cors_origins(cls, v):
@@ -186,10 +199,6 @@ class Settings(BaseSettings):
     def _coerce_cors_headers(cls, v):
         res = cls._parse_list_like(v, "CORS_ALLOW_HEADERS")
         return res if res else ["*"]
-
-    class Config:
-        env_file = ".env"
-        case_sensitive = True
 
 
 settings = Settings()  # Reads from environment and uses safe dev defaults
@@ -330,7 +339,10 @@ def get_current_user(
     Expects a Bearer token and validates it. Raises 401 on failure.
     """
     if credentials is None or credentials.scheme.lower() != "bearer":
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated.")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated.",
+        )
     token = credentials.credentials
     payload = decode_access_token(token)
     sub = payload.get("sub") or {}
@@ -521,7 +533,10 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)) -> TokenResponse
     user = db.query(User).filter(User.email == payload.email).first()
     if not user or not verify_password(payload.password, user.password_hash):
         # Always same error to avoid info leakage
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials.")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid credentials.",
+        )
     token = create_access_token({"id": user.id, "email": user.email, "role": user.role})
     return TokenResponse(access_token=token, token_type="bearer")
 
