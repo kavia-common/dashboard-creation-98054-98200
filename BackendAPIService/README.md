@@ -49,6 +49,7 @@ python -m src.run
 Troubleshooting:
 - Error: `ERROR: Error loading ASGI app. Could not import module "main".`
   This means the command attempted to load `main:app`. Use the full path `src.api.main:app` or `python -m src.run`.
+  Note: A compatibility shim `main.py` is included to support environments that insist on `uvicorn main:app`. Prefer the canonical path `src.api.main:app`.
 - Error: SettingsError / ValidationError for CORS_ALLOW_ORIGINS, CORS_ALLOW_METHODS, or CORS_ALLOW_HEADERS:
   Ensure the environment variable value is one of:
   - Single origin: http://localhost:3000

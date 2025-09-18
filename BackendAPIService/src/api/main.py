@@ -511,8 +511,7 @@ def on_startup():
         # Subsequent DB operations will still fail until DB becomes reachable, but
         # uvicorn will be up and the container will be responsive for health checks.
         logger.error(
-            "Database connectivity could not be established after %s attempts. "
-            "Proceeding to start API. Error: %s",
+            "DB connectivity not established after %s attempts. Error: %s",
             max_attempts,
             repr(last_error),
         )
@@ -531,8 +530,14 @@ def on_startup():
     try:
         any_user = db.query(User).first()
         if not any_user:
-            admin_email = settings.ADMIN_EMAIL or os.getenv("ADMIN_EMAIL", "admin@example.com")
-            admin_password = settings.ADMIN_PASSWORD or os.getenv("ADMIN_PASSWORD", "admin123!")
+            admin_email = (
+                settings.ADMIN_EMAIL
+                or os.getenv("ADMIN_EMAIL", "admin@example.com")
+            )
+            admin_password = (
+                settings.ADMIN_PASSWORD
+                or os.getenv("ADMIN_PASSWORD", "admin123!")
+            )
             admin = User(
                 email=admin_email,
                 full_name="Administrator",
@@ -899,7 +904,9 @@ def get_dashboard(
 @app.exception_handler(HTTPException)
 def http_exception_handler(request: Request, exc: HTTPException):
     # Avoid logging sensitive details; log minimal info
-    logger.warning(f"HTTP {exc.status_code} at {request.url.path}")
+    logger.warning(
+        f"HTTP {exc.status_code} at {request.url.path}"
+    )
     return Response(
         content='{"detail":"%s"}' % exc.detail,
         status_code=exc.status_code,

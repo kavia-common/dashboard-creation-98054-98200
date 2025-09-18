@@ -25,6 +25,8 @@ pip install -r requirements.txt
 uvicorn src.api.main:app --host 0.0.0.0 --port 3001 --proxy-headers
 # or
 python -m src.run
+# compatibility (shim): if your environment insists on main:app
+uvicorn main:app --host 0.0.0.0 --port 3001 --proxy-headers
 ```
 
 ## OpenAPI export
